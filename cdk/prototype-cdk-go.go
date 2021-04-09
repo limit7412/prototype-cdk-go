@@ -1,8 +1,10 @@
 package main
 
 import (
+	"os/exec"
+
 	"github.com/aws/aws-cdk-go/awscdk"
-	"github.com/aws/aws-cdk-go/awscdk/awssns"
+	"github.com/aws/aws-cdk-go/awscdk/awslambda"
 	"github.com/aws/constructs-go/constructs/v3"
 	"github.com/aws/jsii-runtime-go"
 )
@@ -11,31 +13,39 @@ type PrototypeCdkGoStackProps struct {
 	awscdk.StackProps
 }
 
-func NewPrototypeCdkGoStack(scope constructs.Construct, id string, props *PrototypeCdkGoStackProps) awscdk.Stack {
+func NewPrototypeCdkGoStack(scope constructs.Construct, id string, props *PrototypeCdkGoStackProps) (awscdk.Stack, error) {
 	var sprops awscdk.StackProps
 	if props != nil {
 		sprops = props.StackProps
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	// The code that defines your stack goes here
+	err := exec.Command("GOOS=linux", "CGO_ENABLED=0", "go", "build", "main.go", "-o", "bin/main").Run()
+	if err != nil {
+		return nil, err
+	}
 
-	// as an example, here's how you would define an AWS SNS topic:
-	awssns.NewTopic(stack, jsii.String("MyTopic"), &awssns.TopicProps{
-		DisplayName: jsii.String("MyCoolTopic"),
+	awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-id"), &awslambda.FunctionProps{
+		FunctionName: jsii.String("prototype-go-cdk-function"),
+		Runtime:      awslambda.Runtime_GO_1_X(),
+		Code:         awslambda.Code_Asset(jsii.String("bin/")),
+		Handler:      jsii.String("main"),
 	})
 
-	return stack
+	return stack, nil
 }
 
 func main() {
 	app := awscdk.NewApp(nil)
 
-	NewPrototypeCdkGoStack(app, "PrototypeCdkGoStack", &PrototypeCdkGoStackProps{
+	_, err := NewPrototypeCdkGoStack(app, "PrototypeCdkGoStack", &PrototypeCdkGoStackProps{
 		awscdk.StackProps{
 			Env: env(),
 		},
 	})
+	if err != nil {
+		panic(err)
+	}
 
 	app.Synth(nil)
 }

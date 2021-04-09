@@ -17,3 +17,8 @@
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+# binary dir
+bin/
+
+go.sum
