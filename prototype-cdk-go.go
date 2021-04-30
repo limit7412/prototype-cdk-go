@@ -61,10 +61,9 @@ func NewPrototypeCdkGoAPIStack(scope constructs.Construct, id string, props *Pro
 		Handler:      jsii.String("main"),
 	})
 	apiGW.AddRoutes(&awsapigatewayv2.AddRoutesOptions{
-		// FIXME:
-		Integration: nil,
-		Path:        jsii.String("test"),
-		Methods:     &[]awsapigatewayv2.HttpMethod{"POST"},
+		Path:    jsii.String("test"),
+		Methods: &[]awsapigatewayv2.HttpMethod{"POST"},
+		// FIXME: apiFnを紐付ける
 	})
 
 	return stack, nil
@@ -96,8 +95,7 @@ func NewPrototypeCdkGoCronStack(scope constructs.Construct, id string, props *Pr
 			WeekDay: jsii.String("*"),
 			Year:    jsii.String("*"),
 		}),
-		// FIXME:
-		Targets: nil,
+		// FIXME: cronFnを紐付ける
 	})
 
 	return stack, nil
