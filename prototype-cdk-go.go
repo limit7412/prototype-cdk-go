@@ -6,6 +6,7 @@ import (
 
 	"github.com/aws/aws-cdk-go/awscdk"
 	"github.com/aws/aws-cdk-go/awscdk/awsapigateway"
+	"github.com/aws/aws-cdk-go/awscdk/awsevents"
 	"github.com/aws/aws-cdk-go/awscdk/awslambda"
 	"github.com/aws/constructs-go/constructs/v3"
 	"github.com/aws/jsii-runtime-go"
@@ -67,37 +68,56 @@ func NewPrototypeCdkGoAPIStack(scope constructs.Construct, id string, props *Pro
 	return stack, nil
 }
 
-// func NewPrototypeCdkGoCronStack(scope constructs.Construct, id string, props *PrototypeCdkGoStackProps) (awscdk.Stack, error) {
-// 	var sprops awscdk.StackProps
-// 	if props != nil {
-// 		sprops = props.StackProps
-// 	}
-// 	stack := awscdk.NewStack(scope, &id, &sprops)
+func NewPrototypeCdkGoCronStack(scope constructs.Construct, id string, props *PrototypeCdkGoStackProps) (awscdk.Stack, error) {
+	var sprops awscdk.StackProps
+	if props != nil {
+		sprops = props.StackProps
+	}
+	stack := awscdk.NewStack(scope, &id, &sprops)
 
-// 	cronCmd := exec.Command("go", "build", "-o", "bin/handler/cron/main", "lambda/cron/main.go")
-// 	cronCmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
-// 	_, err := cronCmd.CombinedOutput()
-// 	if err != nil {
-// 		return nil, err
-// 	}
-// 	cronFn := awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-cron-lambda"), &awslambda.FunctionProps{
-// 		FunctionName: jsii.String("prototype-go-cdk-cron-function"),
-// 		Runtime:      awslambda.Runtime_GO_1_X(),
-// 		Code:         awslambda.Code_Asset(jsii.String("bin/handler/cron/")),
-// 		Handler:      jsii.String("main"),
-// 	})
-// 	awsevents.NewRule(stack, jsii.String("prototype-go-cdk-cron-rule"), &awsevents.RuleProps{
-// 		Schedule: awsevents.Schedule_Cron(&awsevents.CronOptions{
-// 			Minute:  jsii.String("0"),
-// 			Month:   jsii.String("12"),
-// 			WeekDay: jsii.String("*"),
-// 			Year:    jsii.String("*"),
-// 		}),
-// 		// FIXME: cronFnを紐付ける
-// 	})
+	cronCmd := exec.Command("go", "build", "-o", "bin/handler/cron/main", "lambda/cron/main.go")
+	cronCmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
+	_, err := cronCmd.CombinedOutput()
+	if err != nil {
+		return nil, err
+	}
+	cronFn := awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-cron-lambda"), &awslambda.FunctionProps{
+		FunctionName: jsii.String("prototype-go-cdk-cron-function"),
+		Runtime:      awslambda.Runtime_GO_1_X(),
+		Code:         awslambda.Code_Asset(jsii.String("bin/handler/cron/")),
+		Handler:      jsii.String("main"),
+	})
+	rule := awsevents.NewCfnRule(stack, jsii.String("prototype-go-cdk-cron-rule"), &awsevents.CfnRuleProps{
+		ScheduleExpression: jsii.String("cron(0 12 * * ? *)"),
+		Targets: []struct {
+			Arn *string `json:"arn"`
+			Id  *string `json:"id"`
+		}{{
+			Arn: cronFn.FunctionArn(),
+			Id:  jsii.String("lambda-rule"),
+		}},
+	})
+	awslambda.NewCfnPermission(stack, jsii.String("prototype-go-cdk-cron-permission"), &awslambda.CfnPermissionProps{
+		Action:       jsii.String("lambda:InvokeFunction"),
+		FunctionName: cronFn.FunctionName(),
+		Principal:    jsii.String("events.amazonaws.com"),
+		SourceArn:    rule.AttrArn(),
+	})
 
-// 	return stack, nil
-// }
+	// awsevents.NewRule(stack, jsii.String("prototype-go-cdk-cron-rule"), &awsevents.RuleProps{
+	// 	Schedule: awsevents.Schedule_Cron(&awsevents.CronOptions{
+	// 		Minute:  jsii.String("0"),
+	// 		Month:   jsii.String("12"),
+	// 		WeekDay: jsii.String("*"),
+	// 		Year:    jsii.String("*"),
+	// 	}),
+	// 	Targets: &[]awsevents.IRuleTarget{
+	// 		cronFn
+	// 	},
+	// })
+
+	return stack, nil
+}
 
 func main() {
 	app := awscdk.NewApp(nil)
@@ -110,10 +130,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	// _, err = NewPrototypeCdkGoCronStack(app, "prototype-cdk-go-cron-stack", nil)
-	// if err != nil {
-	// 	panic(err)
-	// }
+	_, err = NewPrototypeCdkGoCronStack(app, "prototype-cdk-go-cron-stack", nil)
+	if err != nil {
+		panic(err)
+	}
 
 	app.Synth(nil)
 }
