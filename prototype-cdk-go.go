@@ -45,7 +45,7 @@ func NewPrototypeCdkGoAPIStack(scope constructs.Construct, id string, props *Pro
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	apiGW := awsapigateway.NewRestApi(stack, jsii.String("prototype-go-cdk-api-gw"), &awsapigateway.RestApiProps{})
+	apiGW := awsapigateway.NewRestApi(stack, jsii.String("prototype-go-cdk-api-gw"), nil)
 
 	cmd := exec.Command("go", "build", "-o", "bin/handler/api/main", "lambda/api/main.go")
 	cmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
