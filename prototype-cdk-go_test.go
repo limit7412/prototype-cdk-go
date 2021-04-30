@@ -14,7 +14,7 @@ func TestPrototypeCdkGoStack(t *testing.T) {
 	app := awscdk.NewApp(nil)
 
 	// WHEN
-	stack, _ := NewPrototypeCdkGoAPIStack(app, "MyStack", nil)
+	stack, _ := NewPrototypeCdkGoSimpleStack(app, "MyStack", nil)
 
 	// THEN
 	bytes, err := json.Marshal(app.Synth(nil).GetStackArtifact(stack.ArtifactId()).Template())
