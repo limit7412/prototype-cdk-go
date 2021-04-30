@@ -5,8 +5,7 @@ import (
 	"os/exec"
 
 	"github.com/aws/aws-cdk-go/awscdk"
-	"github.com/aws/aws-cdk-go/awscdk/awsapigatewayv2"
-	"github.com/aws/aws-cdk-go/awscdk/awsevents"
+	"github.com/aws/aws-cdk-go/awscdk/awsapigateway"
 	"github.com/aws/aws-cdk-go/awscdk/awslambda"
 	"github.com/aws/constructs-go/constructs/v3"
 	"github.com/aws/jsii-runtime-go"
@@ -30,7 +29,7 @@ func NewPrototypeCdkGoSimpleStack(scope constructs.Construct, id string, props *
 		return nil, err
 	}
 	_ = awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-simple-lambda"), &awslambda.FunctionProps{
-		FunctionName: jsii.String("prototype-go-cdk-function"),
+		FunctionName: jsii.String("prototype-go-cdk-simple-function"),
 		Runtime:      awslambda.Runtime_GO_1_X(),
 		Code:         awslambda.Code_Asset(jsii.String("bin/handler/simple/")),
 		Handler:      jsii.String("main"),
@@ -46,7 +45,7 @@ func NewPrototypeCdkGoAPIStack(scope constructs.Construct, id string, props *Pro
 	}
 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	apiGW := awsapigatewayv2.NewHttpApi(stack, jsii.String("prototype-go-cdk-api-gw"), &awsapigatewayv2.HttpApiProps{})
+	apiGW := awsapigateway.NewRestApi(stack, jsii.String("prototype-go-cdk-api-gw"), &awsapigateway.RestApiProps{})
 
 	cmd := exec.Command("go", "build", "-o", "bin/handler/api/main", "lambda/api/main.go")
 	cmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
@@ -55,51 +54,50 @@ func NewPrototypeCdkGoAPIStack(scope constructs.Construct, id string, props *Pro
 		return nil, err
 	}
 	apiFn := awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-api-lambda"), &awslambda.FunctionProps{
-		FunctionName: jsii.String("prototype-go-cdk-function"),
+		FunctionName: jsii.String("prototype-go-cdk-api-function"),
 		Runtime:      awslambda.Runtime_GO_1_X(),
 		Code:         awslambda.Code_Asset(jsii.String("bin/handler/api/")),
 		Handler:      jsii.String("main"),
 	})
-	apiGW.AddRoutes(&awsapigatewayv2.AddRoutesOptions{
-		Path:    jsii.String("test"),
-		Methods: &[]awsapigatewayv2.HttpMethod{"POST"},
-		// FIXME: apiFnを紐付ける
-	})
+	apiGW.
+		Root().
+		AddResource(jsii.String("prototype"), nil).
+		AddMethod(jsii.String("POST"), awsapigateway.NewLambdaIntegration(apiFn, nil), nil)
 
 	return stack, nil
 }
 
-func NewPrototypeCdkGoCronStack(scope constructs.Construct, id string, props *PrototypeCdkGoStackProps) (awscdk.Stack, error) {
-	var sprops awscdk.StackProps
-	if props != nil {
-		sprops = props.StackProps
-	}
-	stack := awscdk.NewStack(scope, &id, &sprops)
+// func NewPrototypeCdkGoCronStack(scope constructs.Construct, id string, props *PrototypeCdkGoStackProps) (awscdk.Stack, error) {
+// 	var sprops awscdk.StackProps
+// 	if props != nil {
+// 		sprops = props.StackProps
+// 	}
+// 	stack := awscdk.NewStack(scope, &id, &sprops)
 
-	cronCmd := exec.Command("go", "build", "-o", "bin/handler/cron/main", "lambda/cron/main.go")
-	cronCmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
-	_, err := cronCmd.CombinedOutput()
-	if err != nil {
-		return nil, err
-	}
-	cronFn := awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-cron-lambda"), &awslambda.FunctionProps{
-		FunctionName: jsii.String("prototype-go-cdk-function"),
-		Runtime:      awslambda.Runtime_GO_1_X(),
-		Code:         awslambda.Code_Asset(jsii.String("bin/handler/cron/")),
-		Handler:      jsii.String("main"),
-	})
-	awsevents.NewRule(stack, jsii.String("prototype-go-cdk-cron-rule"), &awsevents.RuleProps{
-		Schedule: awsevents.Schedule_Cron(&awsevents.CronOptions{
-			Minute:  jsii.String("0"),
-			Month:   jsii.String("12"),
-			WeekDay: jsii.String("*"),
-			Year:    jsii.String("*"),
-		}),
-		// FIXME: cronFnを紐付ける
-	})
+// 	cronCmd := exec.Command("go", "build", "-o", "bin/handler/cron/main", "lambda/cron/main.go")
+// 	cronCmd.Env = append(os.Environ(), "GOOS=linux", "CGO_ENABLED=0")
+// 	_, err := cronCmd.CombinedOutput()
+// 	if err != nil {
+// 		return nil, err
+// 	}
+// 	cronFn := awslambda.NewFunction(stack, jsii.String("prototype-go-cdk-cron-lambda"), &awslambda.FunctionProps{
+// 		FunctionName: jsii.String("prototype-go-cdk-cron-function"),
+// 		Runtime:      awslambda.Runtime_GO_1_X(),
+// 		Code:         awslambda.Code_Asset(jsii.String("bin/handler/cron/")),
+// 		Handler:      jsii.String("main"),
+// 	})
+// 	awsevents.NewRule(stack, jsii.String("prototype-go-cdk-cron-rule"), &awsevents.RuleProps{
+// 		Schedule: awsevents.Schedule_Cron(&awsevents.CronOptions{
+// 			Minute:  jsii.String("0"),
+// 			Month:   jsii.String("12"),
+// 			WeekDay: jsii.String("*"),
+// 			Year:    jsii.String("*"),
+// 		}),
+// 		// FIXME: cronFnを紐付ける
+// 	})
 
-	return stack, nil
-}
+// 	return stack, nil
+// }
 
 func main() {
 	app := awscdk.NewApp(nil)
@@ -112,10 +110,10 @@ func main() {
 	if err != nil {
 		panic(err)
 	}
-	_, err = NewPrototypeCdkGoAPIStack(app, "prototype-cdk-go-cron-stack", nil)
-	if err != nil {
-		panic(err)
-	}
+	// _, err = NewPrototypeCdkGoCronStack(app, "prototype-cdk-go-cron-stack", nil)
+	// if err != nil {
+	// 	panic(err)
+	// }
 
 	app.Synth(nil)
 }
